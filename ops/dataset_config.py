@@ -5,7 +5,7 @@
 
 import os
 
-ROOT_DATASET = '/ssd/video/'  # '/data/jilin/'
+ROOT_DATASET = '/home/cvlab/notebooks/datadrive2/'  # '/data/jilin/'
 
 
 def return_ucf101(modality):
@@ -101,10 +101,24 @@ def return_kinetics(modality):
     return filename_categories, filename_imglist_train, filename_imglist_val, root_data, prefix
 
 
+def return_DHC(modality) : # TODO
+    filename_categories = 2
+    if modality == 'RGB':
+        root_data = ROOT_DATASET + 'HY-DHC'
+        filename_imglist_train = ROOT_DATASET + 'HY-DHC/train_videofolder_merge.txt'
+        filename_imglist_val = ROOT_DATASET + 'HY-DHC/val_videofolder_merge.txt'
+        prefix = '{:09d}.jpg'
+    else:
+        raise NotImplementedError('no such modality:' + modality)
+    return filename_categories, filename_imglist_train, filename_imglist_val, root_data, prefix
+
+
 def return_dataset(dataset, modality):
-    dict_single = {'jester': return_jester, 'something': return_something, 'somethingv2': return_somethingv2,
-                   'ucf101': return_ucf101, 'hmdb51': return_hmdb51,
-                   'kinetics': return_kinetics }
+    # dict_single = {'jester': return_jester, 'something': return_something, 'somethingv2': return_somethingv2,
+    #                'ucf101': return_ucf101, 'hmdb51': return_hmdb51,
+    #                'kinetics': return_kinetics }
+    dict_single = {'DHC' : return_DHC}
+
     if dataset in dict_single:
         file_categories, file_imglist_train, file_imglist_val, root_data, prefix = dict_single[dataset](modality)
     else:

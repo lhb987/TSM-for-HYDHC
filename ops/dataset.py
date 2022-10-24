@@ -10,7 +10,7 @@ import os
 import numpy as np
 from numpy.random import randint
 
-
+# XXX
 class VideoRecord(object):
     def __init__(self, row):
         self._data = row
@@ -26,6 +26,10 @@ class VideoRecord(object):
     @property
     def label(self):
         return int(self._data[2])
+
+    @property
+    def interior_num(self):
+        return int(self._data[3])
 
 
 class TSNDataSet(data.Dataset):
@@ -63,7 +67,7 @@ class TSNDataSet(data.Dataset):
                 return [Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format(idx))).convert('RGB')]
             except Exception:
                 print('error loading image:', os.path.join(self.root_path, directory, self.image_tmpl.format(idx)))
-                return [Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format(1))).convert('RGB')]
+                return [Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format(idx + 2))).convert('RGB')]
         elif self.modality == 'Flow':
             if self.image_tmpl == 'flow_{}_{:05d}.jpg':  # ucf
                 x_img = Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format('x', idx))).convert(
@@ -96,11 +100,22 @@ class TSNDataSet(data.Dataset):
         tmp = [x.strip().split(' ') for x in open(self.list_file)]
         if not self.test_mode or self.remove_missing:
             tmp = [item for item in tmp if int(item[1]) >= 3]
-        self.video_list = [VideoRecord(item) for item in tmp]
+        self.video_list = [VideoRecord(item) for item in tmp] # XXX
+        interior_video_list = []
 
         if self.image_tmpl == '{:06d}-{}_{:05d}.jpg':
             for v in self.video_list:
                 v._data[1] = int(v._data[1]) / 2
+
+        if self.image_tmpl == '{:09d}.jpg': # DHC
+            print('video number:%d before video division' % (len(self.video_list)))
+            for v in self.video_list:
+                interior_num = int(v._data[1]) // 100
+                for i in range(interior_num):
+                    interior_item = [v._data[0], 100, v._data[2], i]
+                    interior_video_list.append(VideoRecord(interior_item))
+            self.video_list = interior_video_list
+                
         print('video number:%d' % (len(self.video_list)))
 
     def _sample_indices(self, record):
@@ -124,7 +139,8 @@ class TSNDataSet(data.Dataset):
                 offsets = np.sort(randint(record.num_frames - self.new_length + 1, size=self.num_segments))
             else:
                 offsets = np.zeros((self.num_segments,))
-            return offsets + 1
+            # return offsets + 1
+            return 2 * (offsets + record._data[3] * 100)
 
     def _get_val_indices(self, record):
         if self.dense_sample:  # i3d dense sample
@@ -139,7 +155,8 @@ class TSNDataSet(data.Dataset):
                 offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.num_segments)])
             else:
                 offsets = np.zeros((self.num_segments,))
-            return offsets + 1
+            # return offsets + 1
+            return 2 * (offsets + record._data[3] * 100)
 
     def _get_test_indices(self, record):
         if self.dense_sample:
@@ -160,7 +177,8 @@ class TSNDataSet(data.Dataset):
         else:
             tick = (record.num_frames - self.new_length + 1) / float(self.num_segments)
             offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.num_segments)])
-            return offsets + 1
+            # return offsets + 1
+            return 2 * (offsets + record._data[3] * 100)
 
     def __getitem__(self, index):
         record = self.video_list[index]
@@ -173,7 +191,8 @@ class TSNDataSet(data.Dataset):
             file_name = self.image_tmpl.format(int(record.path), 'x', 1)
             full_path = os.path.join(self.root_path, '{:06d}'.format(int(record.path)), file_name)
         else:
-            file_name = self.image_tmpl.format(1)
+            # file_name = self.image_tmpl.format(1)
+            file_name = self.image_tmpl.format(2)
             full_path = os.path.join(self.root_path, record.path, file_name)
 
         while not os.path.exists(full_path):
@@ -197,7 +216,6 @@ class TSNDataSet(data.Dataset):
         return self.get(record, segment_indices)
 
     def get(self, record, indices):
-
         images = list()
         for seg_ind in indices:
             p = int(seg_ind)
@@ -206,9 +224,8 @@ class TSNDataSet(data.Dataset):
                 images.extend(seg_imgs)
                 if p < record.num_frames:
                     p += 1
-
         process_data = self.transform(images)
-        return process_data, record.label
+        return process_data, record.label, record.path
 
     def __len__(self):
         return len(self.video_list)

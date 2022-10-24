@@ -304,6 +304,28 @@ class Stack(object):
         self.roll = roll
 
     def __call__(self, img_group):
+        ''' XXX
+        Tensor Manipulation
+        1. View(Tensor), Reshape(Numpy) : Reshape the Tensor ; a) -1 means it will be decided automatically b) View() shares the data with original Tensor c) Contiguous
+        2. Transpose(), Permute() : a) Change order of Demension of the Tensor b) Shares the data with original Tensor c) Not Contiguous - Use .contiguous function to make contiguous
+        3. Squeeze : Remove the demensions with size 1 ; a) We can select the demension to be removed with .squeeze(dim=n) b) If we don't select the demension to be removed, all demensions with size 1 are removed
+        4. Unsqueeze : Create the demension with size 1
+
+        Python Array Slicing - Let's A = np.array([0, 1, 2, 3], [4, 5, 6, 7])
+        1. A[0,:] = ([0, 1, 2, 3])
+        2. A[:,2] = ([2, 6])
+        3. A[1, 1:] = ([5, 6, 7])
+        4. A[:1, :1] = ([0, 1], [4, 5])
+        5. A[1,-1] = ([7])
+        6. A[0, :-2] = ([0, 1, 2])
+
+        Python Array Extended Slices - Arr[A:B:C] : Array From A To B with Interval C
+        1. When A is None : From First Index 
+        2. When B is None : To the End (Last Index when C is +, First Index when C is -)
+        3. When C is None : With interval 1
+
+        List[] vs Tuple() - List is able to be modified but Tuple is not
+        ''' 
         if img_group[0].mode == 'L':
             return np.concatenate([np.expand_dims(x, 2) for x in img_group], axis=2)
         elif img_group[0].mode == 'RGB':

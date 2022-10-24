@@ -3,18 +3,38 @@
 # Ji Lin*, Chuang Gan, Song Han
 # {jilin, songhan}@mit.edu, ganchuang@csail.mit.edu
 
+''' XXX
+Run .py file as .ipynb
+'''
+#%%
 import os
 import time
 import shutil
+
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
+import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 
+import itertools
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+
+''' XXX
+Sort of Python Parser Module : 1. import argparse => Make parsing .py file separately and Import it (opts.py)
+                               2. from optparse import OptionParser 
+''' 
+from opts import parser
+
+''' XXX
+Python Module Import Process : 1. Check sys.modules : Dictionary of imported Modules 
+                               2. Check built-in modules : Python Standard Library
+                               3. Check sys.path : Modules defined by User 
+'''
 from ops.dataset import TSNDataSet
 from ops.models import TSN
 from ops.transforms import *
-from opts import parser
 from ops import dataset_config
 from ops.utils import AverageMeter, accuracy
 from ops.temporal_shift import make_temporal_pool
@@ -23,18 +43,38 @@ from tensorboardX import SummaryWriter
 
 best_prec1 = 0
 
+# XXX
+class ClassInfo:
+    def __init__(self, class_, num_p, num_v, num_c):
+        self.class_ = class_
+        self.names = []
+        self.num_p = num_p
+        self.num_v = num_v
+        self.num_c = num_c
+classdist = [ClassInfo(0,0,0,0), ClassInfo(1,0,0,0), ClassInfo(2,0,0,0), ClassInfo(3,0,0,0)]
 
 def main():
     global args, best_prec1
-    args = parser.parse_args()
+    ''' XXX
+    For Jupyter Notebook
+    ''' 
+    # args = parser.parse_args()
+    args = parser.parse_args(args=[])
 
-    num_class, args.train_list, args.val_list, args.root_path, prefix = dataset_config.return_dataset(args.dataset,
-                                                                                                      args.modality)
+    # return of dataset_config.return_dataset function
+    num_class, args.train_list, args.val_list, args.root_path, prefix = dataset_config.return_dataset(args.dataset, args.modality)
+
     full_arch_name = args.arch
     if args.shift:
         full_arch_name += '_shift{}_{}'.format(args.shift_div, args.shift_place)
     if args.temporal_pool:
         full_arch_name += '_tpool'
+    ''' XXX
+    1. Concatenating String with join Function
+    2. Putting int Variable in the String with using %d and % symbols
+    3. Putting int Variable in the String with format Function - It can be more formable ; Refer to format Function
+
+    '''
     args.store_name = '_'.join(
         ['TSM', args.dataset, args.modality, full_arch_name, args.consensus_type, 'segment%d' % args.num_segments,
          'e{}'.format(args.epochs)])
@@ -60,16 +100,17 @@ def main():
                 partial_bn=not args.no_partialbn,
                 pretrain=args.pretrain,
                 is_shift=args.shift, shift_div=args.shift_div, shift_place=args.shift_place,
-                fc_lr5=not (args.tune_from and args.dataset in args.tune_from),
+                fc_lr5=not (args.tune_from and args.dataset in args.tune_from), # XXX
                 temporal_pool=args.temporal_pool,
                 non_local=args.non_local)
 
-    crop_size = model.crop_size
+    # crop_size = model.crop_size
+    crop_size = 768
     scale_size = model.scale_size
     input_mean = model.input_mean
     input_std = model.input_std
     policies = model.get_optim_policies()
-    train_augmentation = model.get_augmentation(flip=False if 'something' in args.dataset or 'jester' in args.dataset else True)
+    train_augmentation = model.get_augmentation(flip=False if 'something' in args.dataset or 'jester' in args.dataset else True) # XXX
 
     model = torch.nn.DataParallel(model, device_ids=args.gpus).cuda()
 
@@ -145,6 +186,8 @@ def main():
                    image_tmpl=prefix,
                    transform=torchvision.transforms.Compose([
                        train_augmentation,
+                       GroupCenterCrop(crop_size),
+                       GroupScale(int(scale_size)),
                        Stack(roll=(args.arch in ['BNInception', 'InceptionV3'])),
                        ToTorchFormatTensor(div=(args.arch not in ['BNInception', 'InceptionV3'])),
                        normalize,
@@ -160,8 +203,8 @@ def main():
                    image_tmpl=prefix,
                    random_shift=False,
                    transform=torchvision.transforms.Compose([
-                       GroupScale(int(scale_size)),
                        GroupCenterCrop(crop_size),
+                       GroupScale(int(scale_size)),
                        Stack(roll=(args.arch in ['BNInception', 'InceptionV3'])),
                        ToTorchFormatTensor(div=(args.arch not in ['BNInception', 'InceptionV3'])),
                        normalize,
@@ -187,6 +230,27 @@ def main():
     with open(os.path.join(args.root_log, args.store_name, 'args.txt'), 'w') as f:
         f.write(str(args))
     tf_writer = SummaryWriter(log_dir=os.path.join(args.root_log, args.store_name))
+
+    # XXX
+    tmp = [x.strip().split(' ') for x in open(args.train_list)]
+    for obj in tmp:
+        name = obj[0].split('/')[0]
+        target = int(obj[2]) - 1
+        if name not in classdist[target].names:
+            classdist[target].names.append(name)
+            classdist[target].num_p = classdist[target].num_p + 1
+        classdist[target].num_v = classdist[target].num_v + 1
+        classdist[target].num_c = classdist[target].num_c + (int(obj[1]) // 100)
+    print()
+    for c in classdist:
+        if not c.num_p == 0:
+            output0 = ('Class : {:01d} - # of People : {:02d}, # of Videos : {:02d}, # of Clips : {}'.format(c.class_, c.num_p, c.num_v, c.num_c))
+            print(output0)
+            log_training.write(output0 + '\n')
+    print()
+    log_training.write('\n')
+    log_training.flush()
+
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args.lr_type, args.lr_steps)
 
@@ -215,7 +279,6 @@ def main():
                 'best_prec1': best_prec1,
             }, is_best)
 
-
 def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -232,10 +295,16 @@ def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
     model.train()
 
     end = time.time()
-    for i, (input, target) in enumerate(train_loader):
+    for i, (input, target, _) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
+        ''' XXX
+        Required Demension of Output & Target when using torch.nn.CrossEntropyLoss()
+        1. Output : (batchsize x num_classes) - Not require passing the Softmax function
+        2. Target : (batchsize) - Target has to be C-1 (C = num_classes)
+        '''
+        target = target - 1
         target = target.cuda()
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
@@ -245,10 +314,15 @@ def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
         loss = criterion(output, target_var)
 
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        ''' XXX
+        if num_classes < 5, will error
+        '''
+        # prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        prec1 = accuracy(output.data, target, topk=(1, 1))
+
         losses.update(loss.item(), input.size(0))
-        top1.update(prec1.item(), input.size(0))
-        top5.update(prec5.item(), input.size(0))
+        top1.update(prec1[0].item(), input.size(0))
+        #top5.update(prec5.item(), input.size(0))
 
         # compute gradient and do SGD step
         loss.backward()
@@ -271,16 +345,62 @@ def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
                       'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                       'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                 epoch, i, len(train_loader), batch_time=batch_time,
-                data_time=data_time, loss=losses, top1=top1, top5=top5, lr=optimizer.param_groups[-1]['lr'] * 0.1))  # TODO
+                data_time=data_time, loss=losses, top1=top1, top5=top5, lr=optimizer.param_groups[-1]['lr'] * 0.1))
             print(output)
+            # XXX
             log.write(output + '\n')
             log.flush()
 
+    # XXX
     tf_writer.add_scalar('loss/train', losses.avg, epoch)
     tf_writer.add_scalar('acc/train_top1', top1.avg, epoch)
     tf_writer.add_scalar('acc/train_top5', top5.avg, epoch)
     tf_writer.add_scalar('lr', optimizer.param_groups[-1]['lr'], epoch)
 
+# XXX
+class Val_result:
+    def __init__(self, path, logit, target, number):
+        self.path = path
+        self.sum_logit = logit
+        self.target = target
+        self.number = number
+
+class Participant:
+    def __init__(self, name, o_label, target, number):
+        self.name = name
+        self.o_label = []
+        self.o_label.append(o_label)
+        self.target = target
+        self.number = number
+
+    def o_label_update(self, o_label):
+        self.o_label.append(o_label)
+
+# XXX
+def plot_confusion_matrix(con_mat, labels, title, cmap=plt.cm.get_cmap('Blues'), normalize=False):
+    plt.imshow(con_mat, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    marks = np.arange(len(labels))
+    nlabels = []
+    for k in range(len(con_mat)):
+        n = sum(con_mat[k])
+        nlabel = '{0}(n={1})'.format(labels[k],n)
+        nlabels.append(nlabel)
+    plt.xticks(marks, labels)
+    plt.yticks(marks, nlabels)
+
+    thresh = con_mat.max() / 2.
+    if normalize:
+        for i, j in itertools.product(range(con_mat.shape[0]), range(con_mat.shape[1])):
+            plt.text(j, i, '{0}%'.format(con_mat[i, j] * 100 / n), horizontalalignment="center", color="white" if con_mat[i, j] > thresh else "black")
+    else:
+        for i, j in itertools.product(range(con_mat.shape[0]), range(con_mat.shape[1])):
+            plt.text(j, i, con_mat[i, j], horizontalalignment="center", color="white" if con_mat[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.show()
 
 def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
     batch_time = AverageMeter()
@@ -292,20 +412,37 @@ def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
     model.eval()
 
     end = time.time()
+    video_list = []
+    participant = []
     with torch.no_grad():
-        for i, (input, target) in enumerate(val_loader):
+        for i, (input, target, path) in enumerate(val_loader):
+            target = target - 1
             target = target.cuda()
 
             # compute output
             output = model(input)
             loss = criterion(output, target)
 
+            # XXX
+            for o, t, p in zip(output, target, path):
+                append = 1
+                for v in video_list:
+                    if p == v.path:
+                        v.sum_logit = v.sum_logit + o
+                        v.number = v.number + 1
+                        append = 0
+                        break
+                if append == 1:
+                    t = t.item()
+                    video_list.append(Val_result(p, o, t, 1))
+
             # measure accuracy and record loss
-            prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+            # prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+            prec1 = accuracy(output.data, target, topk=(1, 1))
 
             losses.update(loss.item(), input.size(0))
-            top1.update(prec1.item(), input.size(0))
-            top5.update(prec5.item(), input.size(0))
+            top1.update(prec1[0].item(), input.size(0))
+            # top5.update(prec5.item(), input.size(0))
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -324,13 +461,64 @@ def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
                     log.write(output + '\n')
                     log.flush()
 
-    output = ('Testing Results: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
+    output1 = ('Testing Results: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
               .format(top1=top1, top5=top5, loss=losses))
-    print(output)
+    print(output1)
+
+    # XXX
+    labels = ['Normal', 'Mild', 'Serious', 'VerySerious']
+    for R in video_list:
+        name = R.path.split('/')[0]
+        logit = R.sum_logit / R.number
+        hypo = F.softmax(logit, dim=0)
+        hypo = hypo.tolist()
+        o_label = hypo.index(max(hypo))
+        t = R.target
+        append = 1
+        for p in participant:
+            if name == p.name:
+                p.o_label_update(o_label)
+                p.number = p.number + 1
+                append = 0
+                break
+        if append == 1:
+            participant.append(Participant(name, o_label, t, 1))   
+    
+    print()
     if log is not None:
-        log.write(output + '\n')
+        log.write('\n')
         log.flush()
 
+    for P in participant:
+        output2 = 'Participant : {}, # of Pred : {:02d}'.format(P.name, P.number)
+        print(output2)
+        # cm = confusion_matrix(R.target, R.pred)
+        # plot_confusion_matrix(cm, labels=labels, title = 'Confusion Matrix of {}'.format(R.participant), normalize=False)
+        pred_0, pred_1, pred_2, pred_3 = 0, 0, 0, 0
+        for p in P.o_label:
+            if p == 0:
+                pred_0 = pred_0 + 1
+            elif p == 1:
+                pred_1 = pred_1 + 1
+            elif p == 2:
+                pred_2 = pred_2 + 1
+            elif p == 3:
+                pred_3 = pred_3 + 1
+        # output3 = ('Class : {:d}, Pred_0 : {:02d}, Pred_1 : {:02d}, Pred_2 : {:02d}, Pred_3 : {:02d}'.format(P.target, pred_0, pred_1, pred_2, pred_3))
+        output3 = ('Class : {:d}, Pred_0 : {:02d}, Pred_1 : {:02d}'.format(P.target, pred_0, pred_1))
+        print(output3 + '\n')
+
+        # XXX
+        if log is not None:
+            log.write(output2 + '\n')
+            log.write(output3 + '\n' + '\n')
+            log.flush()
+    
+    print()
+    if log is not None:
+        log.write(output1 + '\n')
+        log.flush()
+    
     if tf_writer is not None:
         tf_writer.add_scalar('loss/test', losses.avg, epoch)
         tf_writer.add_scalar('acc/test_top1', top1.avg, epoch)
@@ -375,4 +563,9 @@ def check_rootfolders():
 
 
 if __name__ == '__main__':
+    # XXX
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"  # Set the GPU 0 to use
     main()
+
+# %%

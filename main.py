@@ -51,7 +51,8 @@ class ClassInfo:
         self.num_p = num_p
         self.num_v = num_v
         self.num_c = num_c
-classdist = [ClassInfo(0,0,0,0), ClassInfo(1,0,0,0), ClassInfo(2,0,0,0), ClassInfo(3,0,0,0)]
+classdist_train = [ClassInfo(0,0,0,0), ClassInfo(1,0,0,0), ClassInfo(2,0,0,0), ClassInfo(3,0,0,0)]
+classdist_val = [ClassInfo(0,0,0,0), ClassInfo(1,0,0,0), ClassInfo(2,0,0,0), ClassInfo(3,0,0,0)]
 
 def main():
     global args, best_prec1
@@ -88,6 +89,7 @@ def main():
         args.store_name += '_nl'
     if args.suffix is not None:
         args.store_name += '_{}'.format(args.suffix)
+    args.store_name += '_merge_01_23_221114'
     print('storing name: ' + args.store_name)
 
     check_rootfolders()
@@ -236,13 +238,14 @@ def main():
     for obj in tmp:
         name = obj[0].split('/')[0]
         target = int(obj[2]) - 1
-        if name not in classdist[target].names:
-            classdist[target].names.append(name)
-            classdist[target].num_p = classdist[target].num_p + 1
-        classdist[target].num_v = classdist[target].num_v + 1
-        classdist[target].num_c = classdist[target].num_c + (int(obj[1]) // 100)
-    print()
-    for c in classdist:
+        if name not in classdist_train[target].names:
+            classdist_train[target].names.append(name)
+            classdist_train[target].num_p = classdist_train[target].num_p + 1
+        classdist_train[target].num_v = classdist_train[target].num_v + 1
+        classdist_train[target].num_c = classdist_train[target].num_c + (int(obj[1]) // 100)
+    print('\n' + 'Train Distribution')
+    log_training.write('Train Distribution' + '\n')
+    for c in classdist_train:
         if not c.num_p == 0:
             output0 = ('Class : {:01d} - # of People : {:02d}, # of Videos : {:02d}, # of Clips : {}'.format(c.class_, c.num_p, c.num_v, c.num_c))
             print(output0)
@@ -250,6 +253,27 @@ def main():
     print()
     log_training.write('\n')
     log_training.flush()
+
+    tmp = [x.strip().split(' ') for x in open(args.val_list)]
+    for obj in tmp:
+        name = obj[0].split('/')[0]
+        target = int(obj[2]) - 1
+        if name not in classdist_val[target].names:
+            classdist_val[target].names.append(name)
+            classdist_val[target].num_p = classdist_val[target].num_p + 1
+        classdist_val[target].num_v = classdist_val[target].num_v + 1
+        classdist_val[target].num_c = classdist_val[target].num_c + (int(obj[1]) // 100)
+    print('\n' + 'Test Distribution')
+    log_training.write('Test Distribution' + '\n')
+    for c in classdist_val:
+        if not c.num_p == 0:
+            output0 = ('Class : {:01d} - # of People : {:02d}, # of Videos : {:02d}, # of Clips : {}'.format(c.class_, c.num_p, c.num_v, c.num_c))
+            print(output0)
+            log_training.write(output0 + '\n')
+    print()
+    log_training.write('\n')
+    log_training.flush()
+
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch, args.lr_type, args.lr_steps)

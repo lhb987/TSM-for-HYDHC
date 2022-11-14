@@ -16,10 +16,13 @@ parser.add_argument('--val_list', type=str, default="")
 parser.add_argument('--root_path', type=str, default="")
 # ========================= Model Configs ==========================
 parser.add_argument('--arch', type=str, default="resnet50")
-parser.add_argument('--num_segments', type=int, default=64)
+parser.add_argument('--num_segments', type=int, default=80)
 parser.add_argument('--consensus_type', type=str, default='avg')
 parser.add_argument('--k', type=int, default=3)
 
+''' XXX
+dropout with pretrained model is usually bigger than dropout with normal condition (0.8:0.5) 
+''' 
 parser.add_argument('--dropout', '--do', default=0.5, type=float,
                     metavar='DO', help='dropout ratio (default: 0.5)')
 parser.add_argument('--loss_type', type=str, default="nll",
@@ -27,18 +30,26 @@ parser.add_argument('--loss_type', type=str, default="nll",
 parser.add_argument('--img_feature_dim', default=256, type=int, help="the feature dimension for each frame")
 parser.add_argument('--suffix', type=str, default=None)
 parser.add_argument('--pretrain', type=str, default='imagenet')
-parser.add_argument('--tune_from', type=str, default='/home/cvlab/notebooks/projects/hyunbae/temporal-shift-module/pretrained/TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment16_e50.pth', help='fine-tune from checkpoint')
+#parser.add_argument('--tune_from', type=str, default='/home/cvlab/notebooks/projects/hyunbae/temporal-shift-module/pretrained/TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment16_e50.pth', help='fine-tune from checkpoint')
+parser.add_argument('--tune_from', type=str, help='fine-tune from checkpoint')
 
 # ========================= Learning Configs ==========================
-parser.add_argument('--epochs', default=50, type=int, metavar='N',
+parser.add_argument('--epochs', default=25, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('-b', '--batch-size', default=8, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
+''' XXX
+lr is propotional to batchsize
+lr with pretrained model has to be smaller than lr with normal condition (1:10) 
+''' 
+parser.add_argument('--lr', '--learning-rate', default=0.00125, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--lr_type', default='step', type=str,
                     metavar='LRtype', help='learning rate type')
-parser.add_argument('--lr_steps', default=[20, 40], type=float, nargs="+",
+''' XXX
+lr_steps are propotional to epochs
+''' 
+parser.add_argument('--lr_steps', default=[10, 20], type=float, nargs="+",
                     metavar='LRSteps', help='epochs to decay learning rate by 10')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
@@ -46,6 +57,9 @@ parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
                     metavar='W', help='weight decay (default: 5e-4)')
 parser.add_argument('--clip-gradient', '--gd', default=20, type=float,
                     metavar='W', help='gradient norm clipping (default: disabled)')
+''' XXX
+False when we use pretrained model
+'''
 parser.add_argument('--no_partialbn', '--npb', default=True, action="store_true")
 
 # ========================= Monitor Configs ==========================

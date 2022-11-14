@@ -105,8 +105,8 @@ def return_DHC(modality) : # TODO
     filename_categories = 2
     if modality == 'RGB':
         root_data = ROOT_DATASET + 'HY-DHC'
-        filename_imglist_train = ROOT_DATASET + 'HY-DHC/train_videofolder_merge.txt'
-        filename_imglist_val = ROOT_DATASET + 'HY-DHC/val_videofolder_merge.txt'
+        filename_imglist_train = ROOT_DATASET + 'HY-DHC/train_videofolder_merge_01_23.txt'
+        filename_imglist_val = ROOT_DATASET + 'HY-DHC/val_videofolder_merge_01_23.txt'
         prefix = '{:09d}.jpg'
     else:
         raise NotImplementedError('no such modality:' + modality)

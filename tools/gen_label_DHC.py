@@ -22,7 +22,7 @@ if __name__ == '__main__':
                         nframes = img['nframes']
 
                         phq = annotation['phq9']
-                        if phq < 10:
+                        if phq < 5:
                             label = 1
                         # elif phq < 10:
                         #     label = 2
@@ -36,8 +36,8 @@ if __name__ == '__main__':
                         else:
                             output_train.append('%s %d %d %d' % (path, nframes, label, 0))
                         
-    with open('/home/cvlab/notebooks/datadrive2/HY-DHC/train_videofolder_merge.txt', 'w') as f2:
+    with open('/home/cvlab/notebooks/datadrive2/HY-DHC/train_videofolder_merge_0_123.txt', 'w') as f2:
         f2.write('\n'.join(output_train))
 
-    with open('/home/cvlab/notebooks/datadrive2/HY-DHC/val_videofolder_merge.txt', 'w') as f2:
+    with open('/home/cvlab/notebooks/datadrive2/HY-DHC/val_videofolder_merge_0_123.txt', 'w') as f2:
         f2.write('\n'.join(output_val))

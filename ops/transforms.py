@@ -313,13 +313,13 @@ class Stack(object):
 
         Python Array Slicing - Let's A = np.array([0, 1, 2, 3], [4, 5, 6, 7])
         1. A[0,:] = ([0, 1, 2, 3])
-        2. A[:,2] = ([2, 6])
+        2. A[:,2] = ([2], [6])
         3. A[1, 1:] = ([5, 6, 7])
-        4. A[:1, :1] = ([0, 1], [4, 5])
+        4. A[:1, :1] = ([0], [4])
         5. A[1,-1] = ([7])
-        6. A[0, :-2] = ([0, 1, 2])
+        6. A[0, :-2] = ([0, 1])
 
-        Python Array Extended Slices - Arr[A:B:C] : Array From A To B with Interval C
+        Python Array Extended Slices - Arr[A:B:C] : Array From A To (B-1) with Interval C
         1. When A is None : From First Index 
         2. When B is None : To the End (Last Index when C is +, First Index when C is -)
         3. When C is None : With interval 1

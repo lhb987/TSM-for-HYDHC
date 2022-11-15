@@ -9,8 +9,8 @@ parser = argparse.ArgumentParser(description="PyTorch implementation of Temporal
 a) Prefix -- means : Optional - Can determine default option
 b) No -- means : Compulsory
 '''
-parser.add_argument('--dataset', type=str)
-parser.add_argument('--modality', type=str, choices=['RGB', 'Flow'])
+parser.add_argument('dataset', type=str)
+parser.add_argument('modality', type=str, choices=['RGB', 'Flow'])
 parser.add_argument('--train_list', type=str, default="")
 parser.add_argument('--val_list', type=str, default="")
 parser.add_argument('--root_path', type=str, default="")

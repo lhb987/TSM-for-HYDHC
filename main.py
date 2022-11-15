@@ -59,9 +59,9 @@ def main():
     ''' XXX
     For Jupyter Notebook
     ''' 
-    # args = parser.parse_args()
-    args = parser.parse_args(args=[])
-
+    # args = parser.parse_args(args=[])
+    args = parser.parse_args()
+    
     # return of dataset_config.return_dataset function
     num_class, args.train_list, args.val_list, args.root_path, prefix = dataset_config.return_dataset(args.dataset, args.modality)
 
@@ -89,7 +89,7 @@ def main():
         args.store_name += '_nl'
     if args.suffix is not None:
         args.store_name += '_{}'.format(args.suffix)
-    args.store_name += '_merge_01_23_221114'
+    args.store_name += '_merge_01_23_221115'
     print('storing name: ' + args.store_name)
 
     check_rootfolders()

@@ -181,10 +181,10 @@ def make_pass_dctidct(net, n_segments):
     import torchvision
     import archs
     res50_spatial_feat_dim = {
-        "layer1": 56,
-        "layer2": 28,
-        "layer3": 14,
-        "layer4": 7
+        "layer1": 64,
+        "layer2": 32,
+        "layer3": 16,
+        "layer4": 8
     }
 
     if isinstance(net, torchvision.models.ResNet):

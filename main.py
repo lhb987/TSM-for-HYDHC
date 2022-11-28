@@ -104,7 +104,9 @@ def main():
                 is_shift=args.shift, shift_div=args.shift_div, shift_place=args.shift_place,
                 fc_lr5=not (args.tune_from and args.dataset in args.tune_from), # XXX
                 temporal_pool=args.temporal_pool,
-                non_local=args.non_local)
+                non_local=args.non_local,
+                dctidct=args.dct,
+                )
 
     # crop_size = model.crop_size
     crop_size = 768

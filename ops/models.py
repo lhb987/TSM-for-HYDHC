@@ -5,7 +5,7 @@
 
 from torch import nn
 
-from ops.basic_ops import ConsensusModule
+from ops.basic_ops import ConsensusModule, Identity
 from ops.transforms import *
 from torch.nn.init import normal_, constant_
 
@@ -17,7 +17,8 @@ class TSN(nn.Module):
                  dropout=0.8, img_feature_dim=256,
                  crop_num=1, partial_bn=True, print_spec=True, pretrain='imagenet',
                  is_shift=False, shift_div=8, shift_place='blockres', fc_lr5=False,
-                 temporal_pool=False, non_local=False):
+                 temporal_pool=False, non_local=False, channel_non_local=False, dctidct=False, channel_dctidct=False,
+                 fft=False, channel_fft=False):
         super(TSN, self).__init__()
         self.modality = modality
         self.num_segments = num_segments
@@ -29,14 +30,22 @@ class TSN(nn.Module):
         self.img_feature_dim = img_feature_dim  # the dimension of the CNN feature to represent each frame
         self.pretrain = pretrain
 
+        self.set_transformer = False
+
+        self.avgpoolNflatten = False
         self.is_shift = is_shift
         self.shift_div = shift_div
         self.shift_place = shift_place
         self.base_model_name = base_model
         self.fc_lr5 = fc_lr5
         self.temporal_pool = temporal_pool
-        self.non_local = non_local
 
+        self.dctidct = dctidct
+        self.channel_dctidct = channel_dctidct
+        self.non_local = non_local
+        self.channel_non_local = channel_non_local
+        self.fft = fft
+        self.channel_fft = channel_fft
         if not before_softmax and consensus_type != 'avg':
             raise ValueError("Only avg consensus can be used after Softmax")
 
@@ -54,7 +63,8 @@ class TSN(nn.Module):
         consensus_module:   {}
         dropout_ratio:      {}
         img_feature_dim:    {}
-            """.format(base_model, self.modality, self.num_segments, self.new_length, consensus_type, self.dropout, self.img_feature_dim)))
+            """.format(base_model, self.modality, self.num_segments, self.new_length, consensus_type, self.dropout,
+                       self.img_feature_dim)))
 
         self._prepare_base_model(base_model)
 
@@ -99,6 +109,9 @@ class TSN(nn.Module):
 
     def _prepare_base_model(self, base_model):
         print('=> base model: {}'.format(base_model))
+        if self.consensus_type == 'apfl':
+            self.avgpoolT = torch.nn.AdaptiveAvgPool1d(4)
+            self.fcC = torch.nn.Conv1d(2048, 2048 // 4, 1)
 
         if 'resnet' in base_model:
             self.base_model = getattr(torchvision.models, base_model)(True if self.pretrain == 'imagenet' else False)
@@ -108,17 +121,31 @@ class TSN(nn.Module):
                 make_temporal_shift(self.base_model, self.num_segments,
                                     n_div=self.shift_div, place=self.shift_place, temporal_pool=self.temporal_pool)
 
+            if self.channel_non_local:
+                print('Adding channel-non-local module...')
+                from ops.channel_non_local import make_c_non_local
+                make_c_non_local(self.base_model, self.num_segments)
             if self.non_local:
                 print('Adding non-local module...')
                 from ops.non_local import make_non_local
                 make_non_local(self.base_model, self.num_segments)
+
+
+            elif self.dctidct:
+                print("Adding DCT-iDCT .....")
+                from ops.dct import make_pass_dctidct
+                make_pass_dctidct(self.base_model, self.num_segments)
 
             self.base_model.last_layer_name = 'fc'
             self.input_size = 224
             self.input_mean = [0.485, 0.456, 0.406]
             self.input_std = [0.229, 0.224, 0.225]
 
-            self.base_model.avgpool = nn.AdaptiveAvgPool2d(1)
+            if self.set_transformer:
+                self.base_model.avgpool = Identity()
+            else:
+                self.base_model.avgpool = nn.AdaptiveAvgPool2d(1)
+
 
             if self.modality == 'Flow':
                 self.input_mean = [0.5]
@@ -225,6 +252,9 @@ class TSN(nn.Module):
                         lr10_bias.append(ps[1])
                     else:
                         normal_bias.append(ps[1])
+            elif isinstance(m, torch.nn.Parameter):
+                ps = list(m.parameters())
+
 
             elif isinstance(m, torch.nn.BatchNorm2d):
                 bn_cnt += 1
@@ -253,6 +283,14 @@ class TSN(nn.Module):
              'name': "BN scale/shift"},
             {'params': custom_ops, 'lr_mult': 1, 'decay_mult': 1,
              'name': "custom_ops"},
+            # {'params': self.base_model.layer3[0].complex_l, 'lr_mult': 1, 'decay_mult': 1,
+            #  'name': "ours_1"},
+            # {'params': self.base_model.layer3[0].complex_h, 'lr_mult': 1, 'decay_mult': 1,
+            #  'name': "ours_2"},
+            # {'params': self.base_model.layer4[0].complex_l, 'lr_mult': 1, 'decay_mult': 1,
+            #  'name': "ours_3"},
+            # {'params': self.base_model.layer4[0].complex_h, 'lr_mult': 1, 'decay_mult': 1,
+            #  'name': "ours_4"},
             # for fc
             {'params': lr5_weight, 'lr_mult': 5, 'decay_mult': 1,
              'name': "lr5_weight"},
@@ -260,7 +298,8 @@ class TSN(nn.Module):
              'name': "lr10_bias"},
         ]
 
-    def forward(self, input, no_reshape=False):
+    def forward(self, input, no_reshape=False, tau=None):
+
         if not no_reshape:
             sample_len = (3 if self.modality == "RGB" else 2) * self.new_length
 
@@ -271,6 +310,16 @@ class TSN(nn.Module):
             base_out = self.base_model(input.view((-1, sample_len) + input.size()[-2:]))
         else:
             base_out = self.base_model(input)
+
+        if self.consensus_type == 'apfl':
+            base_out = base_out.view((-1, self.num_segments) + base_out.size()[1:])
+            base_out = base_out.permute(0, 2, 1)  # =>B,C,T
+            base_out = self.avgpoolT(base_out)
+            base_out = self.fcC(base_out).permute(0, 2, 1)  # =>B,4,C//4
+            base_out = torch.flatten(base_out, start_dim=1)
+
+        if self.set_transformer:
+            return base_out.squeeze(1)
 
         if self.dropout > 0:
             base_out = self.new_fc(base_out)
@@ -284,7 +333,8 @@ class TSN(nn.Module):
             else:
                 base_out = base_out.view((-1, self.num_segments) + base_out.size()[1:])
             output = self.consensus(base_out)
-            return output.squeeze(1)
+
+        return output.squeeze(1)
 
     def _get_diff(self, input, keep_rgb=False):
         input_c = 3 if self.modality in ["RGB", "RGBDiff"] else 2
@@ -314,7 +364,7 @@ class TSN(nn.Module):
         # modify parameters, assume the first blob contains the convolution kernels
         params = [x.clone() for x in conv_layer.parameters()]
         kernel_size = params[0].size()
-        new_kernel_size = kernel_size[:1] + (2 * self.new_length, ) + kernel_size[2:]
+        new_kernel_size = kernel_size[:1] + (2 * self.new_length,) + kernel_size[2:]
         new_kernels = params[0].data.mean(dim=1, keepdim=True).expand(new_kernel_size).contiguous()
 
         new_conv = nn.Conv2d(2 * self.new_length, conv_layer.out_channels,
@@ -322,8 +372,8 @@ class TSN(nn.Module):
                              bias=True if len(params) == 2 else False)
         new_conv.weight.data = new_kernels
         if len(params) == 2:
-            new_conv.bias.data = params[1].data # add bias if neccessary
-        layer_name = list(container.state_dict().keys())[0][:-7] # remove .weight suffix to get the layer name
+            new_conv.bias.data = params[1].data  # add bias if neccessary
+        layer_name = list(container.state_dict().keys())[0][:-7]  # remove .weight suffix to get the layer name
 
         # replace the first convlution layer
         setattr(container, layer_name, new_conv)
@@ -354,8 +404,9 @@ class TSN(nn.Module):
             new_kernels = params[0].data.mean(dim=1, keepdim=True).expand(new_kernel_size).contiguous()
         else:
             new_kernel_size = kernel_size[:1] + (3 * self.new_length,) + kernel_size[2:]
-            new_kernels = torch.cat((params[0].data, params[0].data.mean(dim=1, keepdim=True).expand(new_kernel_size).contiguous()),
-                                    1)
+            new_kernels = torch.cat(
+                (params[0].data, params[0].data.mean(dim=1, keepdim=True).expand(new_kernel_size).contiguous()),
+                1)
             new_kernel_size = kernel_size[:1] + (3 + 3 * self.new_length,) + kernel_size[2:]
 
         new_conv = nn.Conv2d(new_kernel_size[1], conv_layer.out_channels,

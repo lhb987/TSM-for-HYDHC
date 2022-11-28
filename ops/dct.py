@@ -387,10 +387,10 @@ class DCTiDCTWrapper3D(nn.Module):
         dct_x = apply_linear_4d_woC(x, self.dct_t, self.dct_h, self.dct_w)
         # dct_x = apply_linear_4d(x, self.dct_t, self.dct_c, self.dct_h, self.dct_w)
 
-        # dct2_x = self.adaptive_pass2(dct_x)
+        dct2_x = self.adaptive_pass2(dct_x)
         # dct_x = self.adaptive_pass(dct_x)
-        dct_x = self.dct_conv(dct_x)
-        # dct_x = self.sigmoid_pass(dct_x)
+        # dct_x = self.dct_conv(dct_x)
+        dct_x = self.sigmoid_pass(dct_x)
         # dct_x = self.hard_adaptive_pass(dct_x, 0.67)
 
         # dct_x = self.complex_l * dct_x
@@ -403,9 +403,9 @@ class DCTiDCTWrapper3D(nn.Module):
         # x_l = apply_linear_4d_woC((x_l), self.idct_t, self.idct_h, self.idct_w)
         # x_h = apply_linear_4d_woC((x_h), self.idct_t, self.idct_h, self.idct_w)
         dct_x = apply_linear_4d_woC(dct_x, self.idct_t, self.idct_h, self.idct_w)
-        # dct2_x = apply_linear_4d_woC(dct2_x, self.idct_t,  self.idct_h, self.idct_w)
+        dct2_x = apply_linear_4d_woC(dct2_x, self.idct_t,  self.idct_h, self.idct_w)
 
-        dct_x = x + self.enhancement(dct_x)
+        dct_x = dct_x + dct2_x
 
         return dct_x.reshape(_bt, _c, _h, _w)
 

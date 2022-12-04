@@ -11,6 +11,8 @@ import os
 import time
 import shutil
 
+import wandb
+
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -89,7 +91,7 @@ def main():
         args.store_name += '_nl'
     if args.suffix is not None:
         args.store_name += '_{}'.format(args.suffix)
-    args.store_name += '_merge_01_23_221115'
+    args.store_name += '_merge_01_23_221204'
     print('storing name: ' + args.store_name)
 
     check_rootfolders()

@@ -11,8 +11,6 @@ import os
 import time
 import shutil
 
-import wandb
-
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -43,6 +41,11 @@ from ops.temporal_shift import make_temporal_pool
 
 from tensorboardX import SummaryWriter
 
+''' XXX
+Wandb : Initialization
+'''
+import wandb
+
 best_prec1 = 0
 
 # XXX
@@ -57,6 +60,13 @@ classdist_train = [ClassInfo(0,0,0,0), ClassInfo(1,0,0,0), ClassInfo(2,0,0,0), C
 classdist_val = [ClassInfo(0,0,0,0), ClassInfo(1,0,0,0), ClassInfo(2,0,0,0), ClassInfo(3,0,0,0)]
 
 def main():
+    ''' XXX
+    Wandb : Initialization
+    '''
+    wandb.init(project="TSM-for-HYDHC")
+    wandb.run.name = "test"
+    wandb.run.save()
+
     global args, best_prec1
     ''' XXX
     For Jupyter Notebook
@@ -94,6 +104,11 @@ def main():
     args.store_name += '_merge_01_23_221204'
     print('storing name: ' + args.store_name)
 
+    ''' XXX
+    Wandb : Initialization
+    '''
+    wandb.config.update(args)
+
     check_rootfolders()
 
     model = TSN(num_class, args.num_segments, args.modality,
@@ -109,6 +124,8 @@ def main():
                 non_local=args.non_local,
                 dctidct=args.dct,
                 )
+
+    
 
     # crop_size = model.crop_size
     crop_size = 768
@@ -322,6 +339,11 @@ def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
     # switch to train mode
     model.train()
 
+    """ XXX
+    Wandb : Hook into the torch model to collect gradients and the topology
+    """
+    wandb.watch(model, train_loader, criterion, log="all")
+
     end = time.time()
     for i, (input, target, _) in enumerate(train_loader):
         # measure data loading time
@@ -378,6 +400,16 @@ def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
             # XXX
             log.write(output + '\n')
             log.flush()
+
+            ''' XXX
+            Wandb : Logging
+            '''
+            metrics = {"train/epoch" : epoch,
+                       "train/train_loss_val" : losses.val,
+                       "train/train_loss_avg" : losses.avg,
+                       "train/train_prec@1_val" : top1.val,
+                       "train/train_prec@1_avg" : top1.avg}
+            wandb.log(metrics)
 
     # XXX
     tf_writer.add_scalar('loss/train', losses.avg, epoch)
@@ -489,6 +521,15 @@ def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
                     log.write(output + '\n')
                     log.flush()
 
+                    ''' XXX
+                    Wandb : Logging
+                    '''
+                    val_metrics = {"val/val_loss_val" : losses.val,
+                                   "val/val_loss_avg" : losses.avg,
+                                   "val/val_prec@1_val" : top1.val,
+                                   "val/val_prec@1_avg" : top1.avg}
+                    wandb.log(val_metrics)
+
     output1 = ('Testing Results: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
               .format(top1=top1, top5=top5, loss=losses))
     print(output1)
@@ -595,5 +636,9 @@ if __name__ == '__main__':
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
     os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"  # Set the GPU 0 to use
     main()
+    ''' XXX
+    Wandb : Make a run as finished
+    '''
+    wandb.finish()
 
 # %%

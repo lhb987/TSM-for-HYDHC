@@ -342,7 +342,7 @@ def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
     """ XXX
     Wandb : Hook into the torch model to collect gradients and the topology
     """
-    wandb.watch(model, train_loader, criterion, log="all")
+    wandb.watch(model, train_loader, criterion)
 
     end = time.time()
     for i, (input, target, _) in enumerate(train_loader):

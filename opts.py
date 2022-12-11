@@ -14,6 +14,8 @@ parser.add_argument('modality', type=str, choices=['RGB', 'Flow'])
 parser.add_argument('--train_list', type=str, default="")
 parser.add_argument('--val_list', type=str, default="")
 parser.add_argument('--root_path', type=str, default="")
+parser.add_argument('--cpu', default=False, action="store_true", help='activate cpu inference') # XXX
+parser.add_argument('--json_path', type=str, default="") # XXX
 # ========================= Model Configs ==========================
 parser.add_argument('--arch', type=str, default="resnet50")
 parser.add_argument('--num_segments', type=int, default=3)
@@ -92,4 +94,4 @@ parser.add_argument('--temporal_pool', default=False, action="store_true", help=
 parser.add_argument('--non_local', default=False, action="store_true", help='add non local block')
 
 parser.add_argument('--dense_sample', default=False, action="store_true", help='use dense sample for video dataset')
-parser.add_argument('--dct', default=False, action="store_true", help='activate dctidct operation')
+parser.add_argument('--dct', default=False, action="store_true", help='activate dctidct operation') # XXX

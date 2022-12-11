@@ -531,7 +531,7 @@ def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
             elif p == 3:
                 pred_3 = pred_3 + 1
         # output3 = ('Class : {:d}, Pred_0 : {:02d}, Pred_1 : {:02d}, Pred_2 : {:02d}, Pred_3 : {:02d}'.format(P.target, pred_0, pred_1, pred_2, pred_3))
-        output3 = ('Class : {:d}, Pred_0 : {:02d}, Pred_1 : {:02d}'.format(P.target, pred_0, pred_1))
+        output3 = ('Class : {:d} | Pred_0 : {:02d}, Pred_1 : {:02d}'.format(P.target, pred_0, pred_1))
         print(output3 + '\n')
 
         # XXX

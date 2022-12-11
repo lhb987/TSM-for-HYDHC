@@ -2,3 +2,5 @@ checkpoint/
 log/
 __pycache__/
 wandb/
+test.txt
+ckpt.best.pth.tar

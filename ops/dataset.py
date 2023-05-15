@@ -7,6 +7,7 @@ import torch.utils.data as data
 
 from PIL import Image
 import os
+import random
 import numpy as np
 from numpy.random import randint
 
@@ -79,6 +80,9 @@ class TSNDataSet(data.Dataset):
                                                 format(int(directory), 'x', idx))).convert('L')
                 y_img = Image.open(os.path.join(self.root_path, '{:06d}'.format(int(directory)), self.image_tmpl.
                                                 format(int(directory), 'y', idx))).convert('L')
+            #TODO elif self.image_tmpl == '{:06d}-{}_{:05d}.jpg':  # DHC
+                #TODO x_img =      
+                #TODO y_img = 
             else:
                 try:
                     # idx_skip = 1 + (idx-1)*5
@@ -110,9 +114,9 @@ class TSNDataSet(data.Dataset):
         if self.image_tmpl == '{:09d}.jpg': # DHC
             print('video number:%d before video division' % (len(self.video_list)))
             for v in self.video_list:
-                interior_num = int(v._data[1]) // 100
+                interior_num = int(v._data[1]) // 50
                 for i in range(interior_num):
-                    interior_item = [v._data[0], 100, v._data[2], i]
+                    interior_item = [v._data[0], 50, v._data[2], i]
                     interior_video_list.append(VideoRecord(interior_item))
             self.video_list = interior_video_list
                 
@@ -120,7 +124,6 @@ class TSNDataSet(data.Dataset):
 
     def _sample_indices(self, record):
         """
-
         :param record: VideoRecord
         :return: list
         """
@@ -140,7 +143,7 @@ class TSNDataSet(data.Dataset):
             else:
                 offsets = np.zeros((self.num_segments,))
             # return offsets + 1
-            return 2 * (offsets + record._data[3] * 100)
+            return 2 * (offsets + record._data[3] * 50)
 
     def _get_val_indices(self, record):
         if self.dense_sample:  # i3d dense sample
@@ -151,12 +154,16 @@ class TSNDataSet(data.Dataset):
             return np.array(offsets) + 1
         else:
             if record.num_frames > self.num_segments + self.new_length - 1:
-                tick = (record.num_frames - self.new_length + 1) / float(self.num_segments)
-                offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.num_segments)])
+                ''' Uniform Sampling '''
+                #tick = (record.num_frames - self.new_length + 1) / float(self.num_segments)
+                #offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.num_segments)])
+                ''' Sequantial Sampling '''
+                s_index = random.randint(0, record.num_frames - self.num_segments)
+                offsets = np.array([i for i in range(s_index, s_index + self.num_segments)])
             else:
                 offsets = np.zeros((self.num_segments,))
             # return offsets + 1
-            return 2 * (offsets + record._data[3] * 100)
+            return 2 * (offsets + record._data[3] * 50)
 
     def _get_test_indices(self, record):
         if self.dense_sample:
@@ -175,10 +182,15 @@ class TSNDataSet(data.Dataset):
 
             return offsets + 1
         else:
-            tick = (record.num_frames - self.new_length + 1) / float(self.num_segments)
-            offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.num_segments)])
+            ''' Uniform Sampling '''
+            #tick = (record.num_frames - self.new_length + 1) / float(self.num_segments)
+            #offsets = np.array([int(tick / 2.0 + tick * x) for x in range(self.num_segments)])
+            ''' Sequantial Sampling '''
+            s_index = random.randint(0, record.num_frames - self.num_segments)
+            offsets = np.array([i for i in range(s_index, s_index + self.num_segments)])
             # return offsets + 1
-            return 2 * (offsets + record._data[3] * 100)
+            return 2 * (offsets + record._data[3] * 50)
+
 
     def __getitem__(self, index):
         record = self.video_list[index]

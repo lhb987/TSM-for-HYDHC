@@ -244,7 +244,7 @@ def main():
             classdist_train[target].names.append(name)
             classdist_train[target].num_p = classdist_train[target].num_p + 1
         classdist_train[target].num_v = classdist_train[target].num_v + 1
-        classdist_train[target].num_c = classdist_train[target].num_c + (int(obj[1]) // 100)
+        classdist_train[target].num_c = classdist_train[target].num_c + (int(obj[1]) // 50)
     print('\n' + 'Train Distribution')
     log_training.write('Train Distribution' + '\n')
     for c in classdist_train:
@@ -264,7 +264,7 @@ def main():
             classdist_val[target].names.append(name)
             classdist_val[target].num_p = classdist_val[target].num_p + 1
         classdist_val[target].num_v = classdist_val[target].num_v + 1
-        classdist_val[target].num_c = classdist_val[target].num_c + (int(obj[1]) // 100)
+        classdist_val[target].num_c = classdist_val[target].num_c + (int(obj[1]) // 50)
     print('\n' + 'Test Distribution')
     log_training.write('Test Distribution' + '\n')
     for c in classdist_val:
@@ -419,7 +419,7 @@ def plot_confusion_matrix(con_mat, labels, title, cmap=plt.cm.get_cmap('Blues'),
     thresh = con_mat.max() / 2.
     if normalize:
         for i, j in itertools.product(range(con_mat.shape[0]), range(con_mat.shape[1])):
-            plt.text(j, i, '{0}%'.format(con_mat[i, j] * 100 / n), horizontalalignment="center", color="white" if con_mat[i, j] > thresh else "black")
+            plt.text(j, i, '{0}%'.format(con_mat[i, j] * 50 / n), horizontalalignment="center", color="white" if con_mat[i, j] > thresh else "black")
     else:
         for i, j in itertools.product(range(con_mat.shape[0]), range(con_mat.shape[1])):
             plt.text(j, i, con_mat[i, j], horizontalalignment="center", color="white" if con_mat[i, j] > thresh else "black")

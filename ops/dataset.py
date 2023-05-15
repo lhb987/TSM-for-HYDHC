@@ -80,7 +80,7 @@ class TSNDataSet(data.Dataset):
                                                 format(int(directory), 'x', idx))).convert('L')
                 y_img = Image.open(os.path.join(self.root_path, '{:06d}'.format(int(directory)), self.image_tmpl.
                                                 format(int(directory), 'y', idx))).convert('L')
-            #TODO elif self.image_tmpl == '{:06d}-{}_{:05d}.jpg':  # DHC
+            #TODO elif self.image_tmpl == 'flow_{:09d}.jpg':  # DHC
                 #TODO x_img =      
                 #TODO y_img = 
             else:

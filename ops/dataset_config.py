@@ -5,7 +5,7 @@
 
 import os
 
-ROOT_DATASET = '/home/cvlab/notebooks/datadrive2/'  # '/data/jilin/'
+ROOT_DATASET = '/131_data/DHC/'  # '/data/jilin/'
 
 
 def return_ucf101(modality):
@@ -101,18 +101,18 @@ def return_kinetics(modality):
     return filename_categories, filename_imglist_train, filename_imglist_val, root_data, prefix
 
 
-def return_DHC(modality) : # TODO
+def return_DHC(modality) :
     filename_categories = 2
     if modality == 'RGB':
-        root_data = ROOT_DATASET + 'HY-DHC'
-        filename_imglist_train = ROOT_DATASET + 'HY-DHC/train_videofolder_merge_01_23.txt'
-        filename_imglist_val = ROOT_DATASET + 'HY-DHC/val_videofolder_merge_01_23.txt'
+        root_data = ROOT_DATASET + 'data_all'
+        filename_imglist_train = ROOT_DATASET + 'train_videofolder_merge_01_23.txt'
+        filename_imglist_val = ROOT_DATASET + 'val_videofolder_merge_01_23.txt'
         prefix = '{:09d}.jpg'
     elif modality == 'Flow':
-        root_data = ROOT_DATASET + 'HY-DHC'
-        filename_imglist_train = ROOT_DATASET #TODO + 'HY-DHC/train_videofolder_merge_01_23_flow.txt'
-        filename_imglist_val = ROOT_DATASET #TODO + 'HY-DHC/val_videofolder_merge_01_23_flow.txt'
-        prefix = 'flow_{:09d}.jpg' #TODO
+        root_data = ROOT_DATASET + 'flow_data_all'
+        filename_imglist_train = ROOT_DATASET + 'train_videofolder_merge_01_23_flow.txt'
+        filename_imglist_val = ROOT_DATASET + 'val_videofolder_merge_01_23_flow.txt'
+        prefix = 'flow_{}_{:05d}.jpg'
     else:
         raise NotImplementedError('no such modality:' + modality)
     return filename_categories, filename_imglist_train, filename_imglist_val, root_data, prefix

@@ -70,7 +70,7 @@ class TSNDataSet(data.Dataset):
                 print('error loading image:', os.path.join(self.root_path, directory, self.image_tmpl.format(idx)))
                 return [Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format(idx + 2))).convert('RGB')]
         elif self.modality == 'Flow':
-            if self.image_tmpl == 'flow_{}_{:05d}.jpg':  # ucf
+            if self.image_tmpl == 'flow_{}_{:05d}.jpg':  # ucf or DHC
                 x_img = Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format('x', idx))).convert(
                     'L')
                 y_img = Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format('y', idx))).convert(
@@ -80,11 +80,6 @@ class TSNDataSet(data.Dataset):
                                                 format(int(directory), 'x', idx))).convert('L')
                 y_img = Image.open(os.path.join(self.root_path, '{:06d}'.format(int(directory)), self.image_tmpl.
                                                 format(int(directory), 'y', idx))).convert('L')
-            elif self.image_tmpl == 'flow_{}_{:05d}.jpg':  # DHC
-                x_img = Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format('x', idx))).convert(
-                    'L')
-                y_img = Image.open(os.path.join(self.root_path, directory, self.image_tmpl.format('y', idx))).convert(
-                    'L')
             else:
                 try:
                     # idx_skip = 1 + (idx-1)*5
@@ -113,7 +108,7 @@ class TSNDataSet(data.Dataset):
             for v in self.video_list:
                 v._data[1] = int(v._data[1]) / 2
 
-        if self.image_tmpl == '{:09d}.jpg': # DHC
+        if self.image_tmpl == '{:09d}.jpg' or self.image_tmpl == 'flow_{}_{:05d}.jpg': # DHC
             print('video number:%d before video division' % (len(self.video_list)))
             for v in self.video_list:
                 interior_num = int(v._data[1]) // 50
@@ -138,14 +133,20 @@ class TSNDataSet(data.Dataset):
         else:  # normal sample
             average_duration = (record.num_frames - self.new_length + 1) // self.num_segments
             if average_duration > 0:
-                offsets = np.multiply(list(range(self.num_segments)), average_duration) + randint(average_duration,
-                                                                                                  size=self.num_segments)
+                ''' Uniform Sampling '''
+                # offsets = np.multiply(list(range(self.num_segments)), average_duration) + randint(average_duration, size=self.num_segments)
+                ''' Sequantial Sampling '''
+                s_index = random.randint(0, record.num_frames - self.num_segments)
+                offsets = np.array([i for i in range(s_index, s_index + self.num_segments)])
             elif record.num_frames > self.num_segments:
                 offsets = np.sort(randint(record.num_frames - self.new_length + 1, size=self.num_segments))
             else:
                 offsets = np.zeros((self.num_segments,))
             # return offsets + 1
-            return 2 * (offsets + record._data[3] * 50)
+            if self.modality == 'RGB' :
+                return 2 * (offsets + record._data[3] * 50)
+            else :
+                return (offsets + record._data[3] * 50)
 
     def _get_val_indices(self, record):
         if self.dense_sample:  # i3d dense sample
@@ -165,7 +166,10 @@ class TSNDataSet(data.Dataset):
             else:
                 offsets = np.zeros((self.num_segments,))
             # return offsets + 1
-            return 2 * (offsets + record._data[3] * 50)
+            if self.modality == 'RGB' :
+                return 2 * (offsets + record._data[3] * 50)
+            else :
+                return (offsets + record._data[3] * 50)
 
     def _get_test_indices(self, record):
         if self.dense_sample:
@@ -191,7 +195,10 @@ class TSNDataSet(data.Dataset):
             s_index = random.randint(0, record.num_frames - self.num_segments)
             offsets = np.array([i for i in range(s_index, s_index + self.num_segments)])
             # return offsets + 1
-            return 2 * (offsets + record._data[3] * 50)
+            if self.modality == 'RGB' :
+                return 2 * (offsets + record._data[3] * 50)
+            else :
+                return (offsets + record._data[3] * 50)
 
 
     def __getitem__(self, index):

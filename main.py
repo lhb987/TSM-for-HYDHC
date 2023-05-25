@@ -89,7 +89,7 @@ def main():
         args.store_name += '_nl'
     if args.suffix is not None:
         args.store_name += '_{}'.format(args.suffix)
-    args.store_name += '_merge_01_23_221115'
+    args.store_name += '_merge_01_23_230526'
     print('storing name: ' + args.store_name)
 
     check_rootfolders()

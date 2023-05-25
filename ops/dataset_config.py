@@ -110,8 +110,8 @@ def return_DHC(modality) :
         prefix = '{:09d}.jpg'
     elif modality == 'Flow':
         root_data = ROOT_DATASET + 'flow_data_all'
-        filename_imglist_train = ROOT_DATASET + 'train_videofolder_merge_01_23_flow.txt'
-        filename_imglist_val = ROOT_DATASET + 'val_videofolder_merge_01_23_flow.txt'
+        filename_imglist_train = ROOT_DATASET + 'train_videofolder_merge_01_23.txt'
+        filename_imglist_val = ROOT_DATASET + 'val_videofolder_merge_01_23.txt'
         prefix = 'flow_{}_{:05d}.jpg'
     else:
         raise NotImplementedError('no such modality:' + modality)

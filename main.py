@@ -1,8 +1,3 @@
-# Code for "TSM: Temporal Shift Module for Efficient Video Understanding"
-# arXiv:1811.08383
-# Ji Lin*, Chuang Gan, Song Han
-# {jilin, songhan}@mit.edu, ganchuang@csail.mit.edu
-
 ''' XXX
 Run .py file as .ipynb
 '''
@@ -19,7 +14,6 @@ from torch.nn.utils import clip_grad_norm_
 
 import itertools
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 
 ''' XXX
 Sort of Python Parser Module : 1. import argparse => Make parsing .py file separately and Import it (opts.py)
@@ -38,8 +32,6 @@ from ops.transforms import *
 from ops import dataset_config
 from ops.utils import AverageMeter, accuracy
 from ops.temporal_shift import make_temporal_pool
-
-from tensorboardX import SummaryWriter
 
 best_prec1 = 0
 
@@ -233,7 +225,6 @@ def main():
     log_training = open(os.path.join(args.root_log, args.store_name, 'log.csv'), 'w')
     with open(os.path.join(args.root_log, args.store_name, 'args.txt'), 'w') as f:
         f.write(str(args))
-    tf_writer = SummaryWriter(log_dir=os.path.join(args.root_log, args.store_name))
 
     # XXX
     tmp = [x.strip().split(' ') for x in open(args.train_list)]
@@ -281,16 +272,15 @@ def main():
         adjust_learning_rate(optimizer, epoch, args.lr_type, args.lr_steps)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, log_training, tf_writer)
+        train(train_loader, model, criterion, optimizer, epoch, log_training)
 
         # evaluate on validation set
         if (epoch + 1) % args.eval_freq == 0 or epoch == args.epochs - 1:
-            prec1 = validate(val_loader, model, criterion, epoch, log_training, tf_writer)
+            prec1 = validate(val_loader, model, criterion, epoch, log_training)
 
             # remember best prec@1 and save checkpoint
             is_best = prec1 > best_prec1
             best_prec1 = max(prec1, best_prec1)
-            tf_writer.add_scalar('acc/test_top1_best', best_prec1, epoch)
 
             output_best = 'Best Prec@1: %.3f\n' % (best_prec1)
             print(output_best)
@@ -305,7 +295,7 @@ def main():
                 'best_prec1': best_prec1,
             }, is_best)
 
-def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
+def train(train_loader, model, criterion, optimizer, epoch, log):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -377,12 +367,6 @@ def train(train_loader, model, criterion, optimizer, epoch, log, tf_writer):
             log.write(output + '\n')
             log.flush()
 
-    # XXX
-    tf_writer.add_scalar('loss/train', losses.avg, epoch)
-    tf_writer.add_scalar('acc/train_top1', top1.avg, epoch)
-    tf_writer.add_scalar('acc/train_top5', top5.avg, epoch)
-    tf_writer.add_scalar('lr', optimizer.param_groups[-1]['lr'], epoch)
-
 # XXX
 class Val_result:
     def __init__(self, path, logit, target, number):
@@ -402,33 +386,7 @@ class Participant:
     def o_label_update(self, o_label):
         self.o_label.append(o_label)
 
-# XXX
-def plot_confusion_matrix(con_mat, labels, title, cmap=plt.cm.get_cmap('Blues'), normalize=False):
-    plt.imshow(con_mat, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    marks = np.arange(len(labels))
-    nlabels = []
-    for k in range(len(con_mat)):
-        n = sum(con_mat[k])
-        nlabel = '{0}(n={1})'.format(labels[k],n)
-        nlabels.append(nlabel)
-    plt.xticks(marks, labels)
-    plt.yticks(marks, nlabels)
-
-    thresh = con_mat.max() / 2.
-    if normalize:
-        for i, j in itertools.product(range(con_mat.shape[0]), range(con_mat.shape[1])):
-            plt.text(j, i, '{0}%'.format(con_mat[i, j] * 50 / n), horizontalalignment="center", color="white" if con_mat[i, j] > thresh else "black")
-    else:
-        for i, j in itertools.product(range(con_mat.shape[0]), range(con_mat.shape[1])):
-            plt.text(j, i, con_mat[i, j], horizontalalignment="center", color="white" if con_mat[i, j] > thresh else "black")
-    plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    plt.show()
-
-def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
+def validate(val_loader, model, criterion, epoch, log=None):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -518,8 +476,6 @@ def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
     for P in participant:
         output2 = 'Participant : {}, # of Pred : {:02d}'.format(P.name, P.number)
         print(output2)
-        # cm = confusion_matrix(R.target, R.pred)
-        # plot_confusion_matrix(cm, labels=labels, title = 'Confusion Matrix of {}'.format(R.participant), normalize=False)
         pred_0, pred_1, pred_2, pred_3 = 0, 0, 0, 0
         for p in P.o_label:
             if p == 0:
@@ -544,11 +500,6 @@ def validate(val_loader, model, criterion, epoch, log=None, tf_writer=None):
     if log is not None:
         log.write(output1 + '\n')
         log.flush()
-    
-    if tf_writer is not None:
-        tf_writer.add_scalar('loss/test', losses.avg, epoch)
-        tf_writer.add_scalar('acc/test_top1', top1.avg, epoch)
-        tf_writer.add_scalar('acc/test_top5', top5.avg, epoch)
 
     return top1.avg
 

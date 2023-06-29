@@ -204,7 +204,6 @@ class TSNDataSet(data.Dataset):
     def __getitem__(self, index):
         record = self.video_list[index]
         # check this is a legit video folder
-
         if self.image_tmpl == 'flow_{}_{:05d}.jpg':
             file_name = self.image_tmpl.format('x', 1)
             full_path = os.path.join(self.root_path, record.path, file_name)
@@ -215,7 +214,7 @@ class TSNDataSet(data.Dataset):
             # file_name = self.image_tmpl.format(1)
             file_name = self.image_tmpl.format(2)
             full_path = os.path.join(self.root_path, record.path, file_name)
-
+        
         while not os.path.exists(full_path):
             print('################## Not Found:', os.path.join(self.root_path, record.path, file_name))
             index = np.random.randint(len(self.video_list))
@@ -246,6 +245,7 @@ class TSNDataSet(data.Dataset):
                 if p < record.num_frames:
                     p += 1
         process_data = self.transform(images)
+        # XXX : record.path is used to test
         return process_data, record.label, record.path
 
     def __len__(self):

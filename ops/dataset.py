@@ -246,7 +246,7 @@ class TSNDataSet(data.Dataset):
                     p += 1
         process_data = self.transform(images)
         # XXX : record.path is used to test
-        return process_data, record.label, record.path
+        return process_data, record.label, record.path # path for gathering the clips' logit
 
     def __len__(self):
         return len(self.video_list)
